@@ -1,0 +1,39 @@
+{
+  "name": "dataset-archive",
+  "version": "0.9.0",
+  "description": "Simple key-value storage of large sets of data in a very compact flat file, prioritising compact archival over read/write speeds. Very minimal.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "mocha --exit --trace-warnings",
+    "build": "rollup -c; standard --fix ./*.cjs",
+    "prepare": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bluebie/dataset-archive.git"
+  },
+  "keywords": [
+    "kv",
+    "key-value",
+    "pigeon-optics",
+    "dataset",
+    "flat-file"
+  ],
+  "author": "Phoenix Fox",
+  "license": "Unlicense",
+  "bugs": {
+    "url": "https://github.com/Bluebie/dataset-archive/issues"
+  },
+  "homepage": "https://github.com/Bluebie/dataset-archive#readme",
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^9.0.0",
+    "rollup": "^2.51.2",
+    "standard": "^16.0.3"
+  },
+  "dependencies": {
+    "length-prefixed-stream": "^2.0.0"
+  }
+}

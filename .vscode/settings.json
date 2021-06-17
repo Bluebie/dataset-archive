@@ -1,0 +1,8 @@
+{
+  "search.exclude": {
+    "**/*.cjs": true
+  },
+  "files.exclude": {
+    "**/*.cjs": true
+  }
+}
