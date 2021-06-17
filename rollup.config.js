@@ -1,5 +1,14 @@
 export default [
   {
+    input: 'index.js',
+    output: {
+      file: 'index.cjs',
+      format: 'cjs',
+      exports: 'auto'
+    },
+    external: ['v8']
+  },
+  {
     input: 'json-codec.js',
     output: {
       file: 'json-codec.cjs',
