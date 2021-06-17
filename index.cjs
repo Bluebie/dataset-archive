@@ -2,12 +2,13 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var stream = require('stream');
-var util = require('util');
 var zlib = require('zlib');
 var lps = require('length-prefixed-stream');
+var streams = require('readable-stream');
 var fs = require('fs');
 var v8 = require('v8');
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
 function _interopNamespace(e) {
   if (e && e.__esModule) return e;
@@ -30,6 +31,7 @@ function _interopNamespace(e) {
 }
 
 var lps__namespace = /*#__PURE__*/_interopNamespace(lps);
+var streams__default = /*#__PURE__*/_interopDefaultLegacy(streams);
 
 /**
  * LevelDB compatible codec, implementing standard JSON, the default codec
@@ -107,7 +109,7 @@ var stringCodec = /*#__PURE__*/Object.freeze({
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
-const pipeline = util.promisify(stream.pipeline);
+const pipeline = streams__default['default'].Stream.promises.pipeline;
 
 class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -148,7 +150,7 @@ class DatasetArchive {
    * @yields {[id, data]}
    */
   async * read ({ decode = true } = {}) {
-    const thru = new stream.PassThrough({ objectMode: true });
+    const thru = new streams__default['default'].PassThrough({ objectMode: true });
     const pipeDone = pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru);
     let index = 0;
     let key;

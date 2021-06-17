@@ -9,13 +9,12 @@
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
-import { PassThrough, pipeline as pipelineCbForm } from 'stream'
-import { promisify } from 'util'
 import { createBrotliCompress, createBrotliDecompress, constants as zlibConsts } from 'zlib'
 import * as jsonCodec from './json-codec.js'
 import * as stringCodec from './string-codec.js'
 import * as lps from 'length-prefixed-stream'
-const pipeline = promisify(pipelineCbForm)
+import streams from 'readable-stream'
+const pipeline = streams.Stream.promises.pipeline
 
 export class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -56,7 +55,7 @@ export class DatasetArchive {
    * @yields {[id, data]}
    */
   async * read ({ decode = true } = {}) {
-    const thru = new PassThrough({ objectMode: true })
+    const thru = new streams.PassThrough({ objectMode: true })
     const pipeDone = pipeline(this.io.read(), createBrotliDecompress(this.brotli), lps.decode({ limit: this.limit }), thru)
     let index = 0
     let key

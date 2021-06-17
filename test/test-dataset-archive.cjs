@@ -14,7 +14,7 @@ const testData = [
   ['pea', 'soup']
 ]
 
-describe('models/dataset-archive', function () {
+describe('dataset-archive', function () {
   /** @type {DatasetArchive} */
   let tape
 

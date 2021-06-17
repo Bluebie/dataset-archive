@@ -34,6 +34,7 @@
     "standard": "^16.0.3"
   },
   "dependencies": {
-    "length-prefixed-stream": "^2.0.0"
+    "length-prefixed-stream": "^2.0.0",
+    "readable-stream": "^3.6.0"
   }
 }
