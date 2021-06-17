@@ -107,7 +107,14 @@ var stringCodec = /*#__PURE__*/Object.freeze({
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
-const pipeline = streams__default['default'].Stream.promises.pipeline;
+const pipeline = (...args) => {
+  return new Promise((resolve, reject) => {
+    streams__default['default'].pipeline(...args, (err, res) => {
+      if (err) reject(err);
+      else resolve(res);
+    });
+  })
+};
 
 class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -149,7 +156,12 @@ class DatasetArchive {
    */
   async * read ({ decode = true } = {}) {
     const thru = new streams__default['default'].PassThrough({ objectMode: true });
-    const pipeDone = pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru);
+    const pipeDone = pipeline(
+      streams__default['default'].Readable.from(this.io.read(), { objectMode: false }),
+      zlib.createBrotliDecompress(this.brotli),
+      lps__namespace.decode({ limit: this.limit }),
+      thru
+    );
     let index = 0;
     let key;
     for await (const buffer of thru) {
@@ -202,7 +214,16 @@ class DatasetArchive {
       }
     }
 
-    await pipeline(gen(this), lps__namespace.encode(), zlib.createBrotliCompress(this.brotli), this.io.write.bind(this.io));
+    const thru = new streams__default['default'].PassThrough({ objectMode: false });
+    await Promise.all([
+      pipeline(
+        streams__default['default'].Readable.from(gen(this), { objectMode: true }),
+        lps__namespace.encode(),
+        zlib.createBrotliCompress(this.brotli),
+        thru
+      ),
+      this.io.write(thru)
+    ]);
     return storedKeys
   }
 

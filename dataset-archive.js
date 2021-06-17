@@ -14,7 +14,14 @@ import * as jsonCodec from './json-codec.js'
 import * as stringCodec from './string-codec.js'
 import * as lps from 'length-prefixed-stream'
 import streams from 'readable-stream'
-const pipeline = streams.Stream.promises.pipeline
+const pipeline = (...args) => {
+  return new Promise((resolve, reject) => {
+    streams.pipeline(...args, (err, res) => {
+      if (err) reject(err)
+      else resolve(res)
+    })
+  })
+}
 
 export class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -56,7 +63,12 @@ export class DatasetArchive {
    */
   async * read ({ decode = true } = {}) {
     const thru = new streams.PassThrough({ objectMode: true })
-    const pipeDone = pipeline(this.io.read(), createBrotliDecompress(this.brotli), lps.decode({ limit: this.limit }), thru)
+    const pipeDone = pipeline(
+      streams.Readable.from(this.io.read(), { objectMode: false }),
+      createBrotliDecompress(this.brotli),
+      lps.decode({ limit: this.limit }),
+      thru
+    )
     let index = 0
     let key
     for await (const buffer of thru) {
@@ -109,7 +121,16 @@ export class DatasetArchive {
       }
     }
 
-    await pipeline(gen(this), lps.encode(), createBrotliCompress(this.brotli), this.io.write.bind(this.io))
+    const thru = new streams.PassThrough({ objectMode: false })
+    await Promise.all([
+      pipeline(
+        streams.Readable.from(gen(this), { objectMode: true }),
+        lps.encode(),
+        createBrotliCompress(this.brotli),
+        thru
+      ),
+      this.io.write(thru)
+    ])
     return storedKeys
   }
 
