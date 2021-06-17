@@ -9,12 +9,12 @@
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
-import { pipeline } from 'stream/promises'
-import { PassThrough } from 'stream'
+import { PassThrough, promises as streamPromises } from 'stream'
 import { createBrotliCompress, createBrotliDecompress, constants as zlibConsts } from 'zlib'
 import * as jsonCodec from './json-codec.js'
 import * as stringCodec from './string-codec.js'
 import * as lps from 'length-prefixed-stream'
+const { pipeline } = streamPromises
 
 export class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {

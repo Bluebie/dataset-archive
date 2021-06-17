@@ -15,7 +15,7 @@ export default [
       format: 'cjs',
       exports: 'auto'
     },
-    external: ['stream/promises', 'zlib', 'stream', 'length-prefixed-stream']
+    external: ['stream', 'zlib', 'length-prefixed-stream']
   },
   {
     input: 'json-codec.js',

@@ -2,7 +2,6 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var promises = require('stream/promises');
 var stream = require('stream');
 var zlib = require('zlib');
 var lps = require('length-prefixed-stream');
@@ -107,6 +106,7 @@ var stringCodec = /*#__PURE__*/Object.freeze({
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
+const { pipeline } = stream.promises;
 
 class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -148,7 +148,7 @@ class DatasetArchive {
    */
   async * read ({ decode = true } = {}) {
     const thru = new stream.PassThrough({ objectMode: true });
-    const pipeDone = promises.pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru);
+    const pipeDone = pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru);
     let index = 0;
     let key;
     for await (const buffer of thru) {
@@ -201,7 +201,7 @@ class DatasetArchive {
       }
     }
 
-    await promises.pipeline(gen(this), lps__namespace.encode(), zlib.createBrotliCompress(this.brotli), this.io.write.bind(this.io));
+    await pipeline(gen(this), lps__namespace.encode(), zlib.createBrotliCompress(this.brotli), this.io.write.bind(this.io));
     return storedKeys
   }
 
