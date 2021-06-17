@@ -3,6 +3,7 @@
 Object.defineProperty(exports, '__esModule', { value: true });
 
 var stream = require('stream');
+var util = require('util');
 var zlib = require('zlib');
 var lps = require('length-prefixed-stream');
 var fs = require('fs');
@@ -106,7 +107,7 @@ var stringCodec = /*#__PURE__*/Object.freeze({
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
-const { pipeline } = stream.promises;
+const pipeline = util.promisify(stream.pipeline);
 
 class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
