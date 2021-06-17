@@ -1,12 +1,12 @@
 /* eslint-env mocha */
 /* eslint-disable no-unused-expressions */
-import { expect, use } from 'chai'
-import { DatasetArchive, DatasetArchiveLimitError } from '../dataset-archive.js'
-import MemoryIO from '../test-utilities/memory-io.js'
-import toArr from '../test-utilities/async-iter-to-array.js'
-import { randomBytes } from 'crypto'
-import chaiAsPromised from 'chai-as-promised'
-use(chaiAsPromised)
+const chai = require('chai')
+chai.use(require('chai-as-promised'))
+const { expect } = chai
+const { DatasetArchive, DatasetArchiveLimitError } = require('../index.cjs')
+const MemoryIO = require('../test-utilities/memory-io.cjs')
+const toArr = require('../test-utilities/async-iter-to-array.cjs')
+const { randomBytes } = require('crypto')
 
 const testData = [
   ['abc', 'xyz'],

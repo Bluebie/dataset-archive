@@ -6,7 +6,16 @@ export default [
       format: 'cjs',
       exports: 'auto'
     },
-    external: ['v8']
+    external: []
+  },
+  {
+    input: 'dataset-archive.js',
+    output: {
+      file: 'dataset-archive.cjs',
+      format: 'cjs',
+      exports: 'auto'
+    },
+    external: ['stream/promises', 'zlib', 'stream', 'length-prefixed-stream']
   },
   {
     input: 'json-codec.js',
@@ -30,6 +39,33 @@ export default [
     input: 'string-codec.js',
     output: {
       file: 'string-codec.cjs',
+      format: 'cjs',
+      exports: 'auto'
+    },
+    external: []
+  },
+  {
+    input: 'fs-io.js',
+    output: {
+      file: 'fs-io.cjs',
+      format: 'cjs',
+      exports: 'auto'
+    },
+    external: ['fs']
+  },
+  {
+    input: 'test-utilities/async-iter-to-array.js',
+    output: {
+      file: 'test-utilities/async-iter-to-array.cjs',
+      format: 'cjs',
+      exports: 'auto'
+    },
+    external: []
+  },
+  {
+    input: 'test-utilities/memory-io.js',
+    output: {
+      file: 'test-utilities/memory-io.cjs',
       format: 'cjs',
       exports: 'auto'
     },

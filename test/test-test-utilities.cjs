@@ -1,8 +1,8 @@
 /* eslint-env mocha */
 /* eslint-disable no-unused-expressions */
-import { expect } from 'chai'
-import MemoryIO from '../test-utilities/memory-io.js'
-import toArr from '../test-utilities/async-iter-to-array.js'
+const { expect } = require('chai')
+const MemoryIO = require('../test-utilities/memory-io.cjs')
+const toArr = require('../test-utilities/async-iter-to-array.cjs')
 
 describe('test-utilities', () => {
   it('async-iter-to-array', async () => {

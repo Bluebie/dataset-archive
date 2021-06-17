@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "mocha --exit --trace-warnings",
+    "test": "npm run build; mocha --exit --trace-warnings",
     "build": "rollup -c",
     "prepare": "npm run build"
   },

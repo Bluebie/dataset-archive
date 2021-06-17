@@ -1,7 +1,7 @@
 /* eslint-env mocha */
 /* eslint-disable no-unused-expressions */
-import { expect } from 'chai'
-import { encode, decode } from '../string-codec.js'
+const { expect } = require('chai')
+const { encode, decode } = require('../string-codec.cjs')
 
 describe('string-codec', () => {
   it('returns buffers', () => {

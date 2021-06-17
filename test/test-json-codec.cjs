@@ -1,7 +1,7 @@
 /* eslint-env mocha */
 /* eslint-disable no-unused-expressions */
-import { expect } from 'chai'
-import { encode, decode } from '../json-codec.js'
+const { expect } = require('chai')
+const { encode, decode } = require('../json-codec.cjs')
 
 const testData = [
   'hello world', // roman

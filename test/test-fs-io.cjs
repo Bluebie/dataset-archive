@@ -1,12 +1,12 @@
 /* eslint-env mocha */
 /* eslint-disable no-unused-expressions */
-import { randomBytes } from 'crypto'
-import { promises as fs } from 'fs'
-import { tmpdir } from 'os'
-import { join } from 'path'
-import { expect } from 'chai'
-import toArr from '../test-utilities/async-iter-to-array.js'
-import fsIO from '../fs-io.js'
+const { randomBytes } = require('crypto')
+const { tmpdir } = require('os')
+const { join } = require('path')
+const fs = require('fs').promises
+const { expect } = require('chai')
+const toArr = require('../test-utilities/async-iter-to-array.cjs')
+const fsIO = require('../fs-io.cjs')
 
 describe('fs-io', () => {
   const tmpPath = join(tmpdir(), `fs-io-test-file-${Date.now()}`)
