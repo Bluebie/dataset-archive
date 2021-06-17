@@ -48,12 +48,12 @@ export default function createFSIO (path) {
           await handle.write(chunk)
         }
         await handle.close()
-        await fs.rm(bakPath).catch(x => {})
+        await fs.unlink(bakPath).catch(x => {})
         await fs.rename(path, bakPath).catch(x => {})
         await fs.rename(tmpPath, path).catch(x => {})
-        await fs.rm(bakPath).catch(x => {})
+        await fs.unlink(bakPath).catch(x => {})
       } catch (err) {
-        await fs.rm(tmpPath).catch(x => {})
+        await fs.unlink(tmpPath).catch(x => {})
         throw err
       }
     }

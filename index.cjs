@@ -368,12 +368,12 @@ function createFSIO (path) {
           await handle.write(chunk);
         }
         await handle.close();
-        await fs.promises.rm(bakPath).catch(x => {});
+        await fs.promises.unlink(bakPath).catch(x => {});
         await fs.promises.rename(path, bakPath).catch(x => {});
         await fs.promises.rename(tmpPath, path).catch(x => {});
-        await fs.promises.rm(bakPath).catch(x => {});
+        await fs.promises.unlink(bakPath).catch(x => {});
       } catch (err) {
-        await fs.promises.rm(tmpPath).catch(x => {});
+        await fs.promises.unlink(tmpPath).catch(x => {});
         throw err
       }
     }

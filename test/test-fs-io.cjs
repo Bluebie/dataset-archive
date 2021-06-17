@@ -69,6 +69,6 @@ describe('fs-io', () => {
   })
 
   afterEach(async () => {
-    await fs.rm(tmpPath).catch(x => {})
+    await fs.unlink(tmpPath).catch(x => {})
   })
 })
