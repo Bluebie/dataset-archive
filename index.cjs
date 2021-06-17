@@ -3,8 +3,10 @@
 Object.defineProperty(exports, '__esModule', { value: true })
 
 const promises = require('stream/promises')
+const stream = require('stream')
 const zlib = require('zlib')
 const lps = require('length-prefixed-stream')
+const fs = require('fs')
 const v8 = require('v8')
 
 function _interopNamespace (e) {
@@ -130,7 +132,7 @@ class DatasetArchive {
       }
     }
     if (options.io === undefined) throw new Error('Missing option, io')
-    /** @type {import('fs')} */
+    /** @type {{async * read (), async write (list)}} */
     this.io = options.io
 
     this.keyCodec = stringCodec
@@ -145,30 +147,21 @@ class DatasetArchive {
    * @yields {[id, data]}
    */
   async * read ({ decode = true } = {}) {
-    try {
-      const bytes = this.fs.createReadStream(this.path)
-      const decompressed = bytes.pipe(zlib.createBrotliDecompress(this.brotli))
-      bytes.on('error', err => decompressed.destroy(err))
-      const chunked = decompressed.pipe(lps__namespace.decode())
-      decompressed.on('error', err => chunked.destroy(err))
-
-      let index = 0
-      let key
-      for await (const buffer of chunked) {
-        if (index % 2 === 0) {
-          // key
-          key = decode ? buffer.toString('utf-8') : buffer
-        } else {
-          const value = decode ? exports.valueDecode(buffer) : buffer
-          yield [key, value]
-        }
-        index += 1
+    const thru = new stream.PassThrough({ objectMode: true })
+    const pipeDone = promises.pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru)
+    let index = 0
+    let key
+    for await (const buffer of thru) {
+      if (index % 2 === 0) {
+        // key
+        key = decode ? this.keyCodec.decode(buffer) : buffer
+      } else {
+        const value = decode ? this.valueCodec.decode(buffer) : buffer
+        yield [key, value]
       }
-    } catch (err) {
-      // don't throw errors for missing files, just treat them as empty
-      if (err.code !== 'ENOENT') throw err
-      else console.log('no file')
+      index += 1
     }
+    await pipeDone
   }
 
   /**
@@ -181,37 +174,34 @@ class DatasetArchive {
    */
   async write (iterable, { encode = true } = {}) {
     const storedKeys = new Set()
-    async function * gen () {
+    async function * gen (self) {
       for await (const object of iterable) {
         if (!Array.isArray(object)) throw new Error('iterator must provide two element arrays')
         if (object.length !== 2) throw new Error('Array must have length of 2')
         // skip entries which are duplicates
-        if (storedKeys.has(encode ? object[0] : object[1].toString('utf-8'))) {
+        if (storedKeys.has(encode ? object[0] : self.keyCodec.decode(object[1]))) {
           continue
         }
 
+        const output = [...object]
         if (encode) {
-          storedKeys.add(object[0])
           if (typeof object[0] !== 'string') throw new Error('key must be a string')
-          yield Buffer.from(object[0], 'utf-8')
-          yield exports.valueEncode(object[1])
+          storedKeys.add(output[0])
+          output[0] = self.keyCodec.encode(object[0])
+          output[1] = self.valueCodec.encode(object[1])
         } else {
-          if (!Buffer.isBuffer(object[0])) throw new Error('key must be a Buffer')
-          if (!Buffer.isBuffer(object[1])) throw new Error('value must be a Buffer')
-          storedKeys.add(object[0].toString('utf-8'))
-          yield object[0]
-          yield object[1]
+          storedKeys.add(self.keyCodec.decode(object[0]))
         }
+        if (output.length !== 2) throw new Error('each iterable value must be an array of length 2, key value pair')
+        if (!Buffer.isBuffer(output[0])) throw new Error('key must be a Buffer')
+        if (!Buffer.isBuffer(output[1])) throw new Error('value must be a Buffer')
+        if (output[0].length > self.limit) throw new DatasetArchiveLimitError(self.limit, output[0].length)
+        if (output[1].length > self.limit) throw new DatasetArchiveLimitError(self.limit, output[1].length)
+        yield * output
       }
     }
 
-    await promises.pipeline([
-      gen(),
-      lps__namespace.encode(),
-      zlib.createBrotliCompress(this.brotli),
-      this.raw.writeStream(this.path)
-    ])
-
+    await promises.pipeline(gen(this), lps__namespace.encode(), zlib.createBrotliCompress(this.brotli), this.io.write.bind(this.io))
     return storedKeys
   }
 
@@ -224,8 +214,8 @@ class DatasetArchive {
     const includeVal = includeValue === 'auto' ? filter.length === 2 : !!includeValue
     async function * iter (archive) {
       for await (const [keyBuffer, valueBuffer] of archive.read({ decode: false })) {
-        const key = keyBuffer.toString('utf-8')
-        if (await (includeVal ? filter(key, exports.valueDecode(valueBuffer)) : filter(key))) {
+        const key = archive.keyCodec.decode(keyBuffer)
+        if (await (includeVal ? filter(key, archive.valueCodec.decode(valueBuffer)) : filter(key))) {
           yield [keyBuffer, valueBuffer]
         }
       }
@@ -242,12 +232,12 @@ class DatasetArchive {
   async * select (selectFn, includeValue = 'auto') {
     const includeVal = includeValue === 'auto' ? selectFn.length === 2 : !!includeValue
     for await (const [keyBuffer, valueBuffer] of this.read({ decode: false })) {
-      const key = keyBuffer.toString('utf-8')
+      const key = this.keyCodec.decode(keyBuffer)
       if (includeVal) {
-        const value = exports.valueDecode(valueBuffer)
+        const value = this.valueCodec.decode(valueBuffer)
         if (await selectFn(key, value)) yield [key, value]
       } else {
-        if (await selectFn(key)) yield [key, exports.valueDecode(valueBuffer)]
+        if (await selectFn(key)) yield [key, this.valueCodec.decode(valueBuffer)]
       }
     }
   }
@@ -258,13 +248,6 @@ class DatasetArchive {
    */
   async delete (...keys) {
     await this.filter(key => !keys.includes(key), false)
-  }
-
-  /**
-   * delete the whole archive, effectively making it empty, and removing the underlying file
-   */
-  async deleteArchive () {
-    await this.raw.delete(this.path)
   }
 
   /**
@@ -288,13 +271,13 @@ class DatasetArchive {
         if (!set.has(key)) {
           set.add(key)
           if (value !== undefined) {
-            yield [Buffer.from(`${key}`, 'utf-8'), exports.valueEncode(value)]
+            yield [archive.keyCodec.encode(key), archive.valueCodec.encode(value)]
           }
         }
       }
 
       for await (const [keyBuffer, valueBuffer] of archive.read({ decode: false })) {
-        const key = keyBuffer.toString('utf-8')
+        const key = archive.keyCodec.decode(keyBuffer)
         if (!set.has(key)) {
           set.add(key)
           yield [keyBuffer, valueBuffer]
@@ -319,10 +302,10 @@ class DatasetArchive {
    * @param {string} searchKey
    */
   async get (searchKey) {
-    const searchBuffer = Buffer.from(searchKey, 'utf-8')
+    const searchBuffer = this.keyCodec.encode(searchKey)
     for await (const [keyBuffer, valueBuffer] of this.read({ decode: false })) {
       if (searchBuffer.equals(keyBuffer)) {
-        return exports.valueDecode(valueBuffer)
+        return this.valueCodec.decode(valueBuffer)
       }
     }
   }
@@ -333,6 +316,66 @@ class DatasetArchive {
    */
   async * [Symbol.asyncIterator] () {
     yield * this.read({ decode: true })
+  }
+}
+
+function createFSIO (path) {
+  const chunkSize = 64 * 1024
+
+  return {
+    async * read () {
+      let handle
+      try {
+        handle = await fs.promises.open(path, 'r')
+      } catch (err) {
+        if (err.code === 'ENOENT') {
+          try {
+            handle = await fs.promises.open(`${path}.backup`, 'r')
+          } catch (err2) {
+            if (err.code === 'ENOENT') {
+              return
+            } else {
+              throw err
+            }
+          }
+        } else {
+          throw err
+        }
+      }
+
+      let position = 0
+      while (true) {
+        const { buffer, bytesRead } = await handle.read(Buffer.alloc(chunkSize), 0, chunkSize, position)
+        position += bytesRead
+        if (bytesRead > 0) {
+          yield buffer.slice(0, bytesRead)
+        }
+        // we have reached the end of the file, close and bail
+        if (bytesRead < chunkSize) {
+          await handle.close()
+          return
+        }
+      }
+    },
+
+    async write (bufferIterator) {
+      const tmpPath = `${path}.temporary-${Date.now().toString(36)}-${Math.round(Math.random() * 0xFFFFFFFF).toString(36)}`
+      const bakPath = `${path}.backup`
+      const handle = await fs.promises.open(tmpPath, 'wx')
+      try {
+        for await (const chunk of bufferIterator) {
+          await handle.write(chunk)
+        }
+        await handle.close()
+        await fs.promises.rm(bakPath).catch(x => {})
+        await fs.promises.rename(path, bakPath).catch(x => {})
+        await fs.promises.rename(tmpPath, path).catch(x => {})
+        await fs.promises.rm(bakPath).catch(x => {})
+      } catch (err) {
+        await fs.promises.rm(tmpPath).catch(x => {})
+        throw err
+      }
+    }
   }
 }
 
@@ -369,7 +412,18 @@ const v8Codec = /* #__PURE__ */Object.freeze({
   buffer: buffer
 })
 
+/**
+ *
+ * @param {string} path - filesystem path where dataset should be read/written to
+ * @param {object} [options] - any extra options you'd like to adjust
+ * @returns {DatasetArchive}
+ */
+function fsOpen (path, options = {}) {
+  return new DatasetArchive({ io: createFSIO(path), ...options })
+}
+
 exports.DatasetArchive = DatasetArchive
 exports.DatasetArchiveLimitError = DatasetArchiveLimitError
+exports.fsOpen = fsOpen
 exports.jsonCodec = jsonCodec
 exports.v8Codec = v8Codec
