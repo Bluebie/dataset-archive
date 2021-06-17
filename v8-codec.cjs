@@ -1,8 +1,8 @@
-'use strict'
+'use strict';
 
-Object.defineProperty(exports, '__esModule', { value: true })
+Object.defineProperty(exports, '__esModule', { value: true });
 
-const v8 = require('v8')
+var v8 = require('v8');
 
 /**
  * Provides V8 structured clone algorithm as a LevelDB compatible codec
@@ -26,10 +26,10 @@ function decode (buffer) {
   return v8.deserialize(buffer)
 }
 
-const type = 'v8-structured-clone'
-const buffer = true
+const type = 'v8-structured-clone';
+const buffer = true;
 
-exports.buffer = buffer
-exports.decode = decode
-exports.encode = encode
-exports.type = type
+exports.buffer = buffer;
+exports.decode = decode;
+exports.encode = encode;
+exports.type = type;

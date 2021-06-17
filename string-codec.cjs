@@ -1,6 +1,6 @@
-'use strict'
+'use strict';
 
-Object.defineProperty(exports, '__esModule', { value: true })
+Object.defineProperty(exports, '__esModule', { value: true });
 
 /**
  * LevelDB compatible codec, implementing standard JSON, the default codec
@@ -12,7 +12,7 @@ Object.defineProperty(exports, '__esModule', { value: true })
  * @returns {Buffer}
  */
 function encode (value) {
-  if (typeof value !== 'string') value = `${value}`
+  if (typeof value !== 'string') value = `${value}`;
   return Buffer.from(value, 'utf-8')
 }
 
@@ -24,10 +24,10 @@ function encode (value) {
 function decode (value) {
   return value.toString('utf-8')
 }
-const buffer = true
-const type = 'utf-8'
+const buffer = true;
+const type = 'utf-8';
 
-exports.buffer = buffer
-exports.decode = decode
-exports.encode = encode
-exports.type = type
+exports.buffer = buffer;
+exports.decode = decode;
+exports.encode = encode;
+exports.type = type;

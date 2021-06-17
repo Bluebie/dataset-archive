@@ -1,35 +1,35 @@
-'use strict'
+'use strict';
 
-Object.defineProperty(exports, '__esModule', { value: true })
+Object.defineProperty(exports, '__esModule', { value: true });
 
-const promises = require('stream/promises')
-const stream = require('stream')
-const zlib = require('zlib')
-const lps = require('length-prefixed-stream')
-const fs = require('fs')
-const v8 = require('v8')
+var promises = require('stream/promises');
+var stream = require('stream');
+var zlib = require('zlib');
+var lps = require('length-prefixed-stream');
+var fs = require('fs');
+var v8 = require('v8');
 
-function _interopNamespace (e) {
-  if (e && e.__esModule) return e
-  const n = Object.create(null)
+function _interopNamespace(e) {
+  if (e && e.__esModule) return e;
+  var n = Object.create(null);
   if (e) {
     Object.keys(e).forEach(function (k) {
       if (k !== 'default') {
-        const d = Object.getOwnPropertyDescriptor(e, k)
+        var d = Object.getOwnPropertyDescriptor(e, k);
         Object.defineProperty(n, k, d.get ? d : {
           enumerable: true,
           get: function () {
-            return e[k]
+            return e[k];
           }
-        })
+        });
       }
-    })
+    });
   }
-  n.default = e
-  return Object.freeze(n)
+  n['default'] = e;
+  return Object.freeze(n);
 }
 
-const lps__namespace = /* #__PURE__ */_interopNamespace(lps)
+var lps__namespace = /*#__PURE__*/_interopNamespace(lps);
 
 /**
  * LevelDB compatible codec, implementing standard JSON, the default codec
@@ -52,16 +52,16 @@ function encode$2 (value) {
 function decode$2 (value) {
   return JSON.parse(value.toString('utf-8'))
 }
-const buffer$2 = true
-const type$2 = 'JSON'
+const buffer$2 = true;
+const type$2 = 'JSON';
 
-const jsonCodec = /* #__PURE__ */Object.freeze({
+var jsonCodec = /*#__PURE__*/Object.freeze({
   __proto__: null,
   encode: encode$2,
   decode: decode$2,
   buffer: buffer$2,
   type: type$2
-})
+});
 
 /**
  * LevelDB compatible codec, implementing standard JSON, the default codec
@@ -73,7 +73,7 @@ const jsonCodec = /* #__PURE__ */Object.freeze({
  * @returns {Buffer}
  */
 function encode$1 (value) {
-  if (typeof value !== 'string') value = `${value}`
+  if (typeof value !== 'string') value = `${value}`;
   return Buffer.from(value, 'utf-8')
 }
 
@@ -85,16 +85,16 @@ function encode$1 (value) {
 function decode$1 (value) {
   return value.toString('utf-8')
 }
-const buffer$1 = true
-const type$1 = 'utf-8'
+const buffer$1 = true;
+const type$1 = 'utf-8';
 
-const stringCodec = /* #__PURE__ */Object.freeze({
+var stringCodec = /*#__PURE__*/Object.freeze({
   __proto__: null,
   encode: encode$1,
   decode: decode$1,
   buffer: buffer$1,
   type: type$1
-})
+});
 
 /**
  * Dataset Archive is used to store a dataset of key-value pairs in a single flat file on disk
@@ -110,7 +110,7 @@ const stringCodec = /* #__PURE__ */Object.freeze({
 
 class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
-    super(`Dataset entry size limit exceeded, max size is ${limit} bytes but value encoded to ${size} bytes`)
+    super(`Dataset entry size limit exceeded, max size is ${limit} bytes but value encoded to ${size} bytes`);
   }
 }
 
@@ -130,14 +130,14 @@ class DatasetArchive {
         [zlib.constants.BROTLI_PARAM_QUALITY]: 5,
         ...((options.brotli || {}).params || {})
       }
-    }
+    };
     if (options.io === undefined) throw new Error('Missing option, io')
     /** @type {{async * read (), async write (list)}} */
-    this.io = options.io
+    this.io = options.io;
 
-    this.keyCodec = stringCodec
-    this.valueCodec = options.codec || jsonCodec
-    this.limit = typeof options.limit === 'number' ? options.limit : Infinity
+    this.keyCodec = stringCodec;
+    this.valueCodec = options.codec || jsonCodec;
+    this.limit = typeof options.limit === 'number' ? options.limit : Infinity;
   }
 
   /**
@@ -147,21 +147,21 @@ class DatasetArchive {
    * @yields {[id, data]}
    */
   async * read ({ decode = true } = {}) {
-    const thru = new stream.PassThrough({ objectMode: true })
-    const pipeDone = promises.pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru)
-    let index = 0
-    let key
+    const thru = new stream.PassThrough({ objectMode: true });
+    const pipeDone = promises.pipeline(this.io.read(), zlib.createBrotliDecompress(this.brotli), lps__namespace.decode({ limit: this.limit }), thru);
+    let index = 0;
+    let key;
     for await (const buffer of thru) {
       if (index % 2 === 0) {
         // key
-        key = decode ? this.keyCodec.decode(buffer) : buffer
+        key = decode ? this.keyCodec.decode(buffer) : buffer;
       } else {
-        const value = decode ? this.valueCodec.decode(buffer) : buffer
-        yield [key, value]
+        const value = decode ? this.valueCodec.decode(buffer) : buffer;
+        yield [key, value];
       }
-      index += 1
+      index += 1;
     }
-    await pipeDone
+    await pipeDone;
   }
 
   /**
@@ -173,7 +173,7 @@ class DatasetArchive {
    * @async
    */
   async write (iterable, { encode = true } = {}) {
-    const storedKeys = new Set()
+    const storedKeys = new Set();
     async function * gen (self) {
       for await (const object of iterable) {
         if (!Array.isArray(object)) throw new Error('iterator must provide two element arrays')
@@ -183,25 +183,25 @@ class DatasetArchive {
           continue
         }
 
-        const output = [...object]
+        const output = [...object];
         if (encode) {
           if (typeof object[0] !== 'string') throw new Error('key must be a string')
-          storedKeys.add(output[0])
-          output[0] = self.keyCodec.encode(object[0])
-          output[1] = self.valueCodec.encode(object[1])
+          storedKeys.add(output[0]);
+          output[0] = self.keyCodec.encode(object[0]);
+          output[1] = self.valueCodec.encode(object[1]);
         } else {
-          storedKeys.add(self.keyCodec.decode(object[0]))
+          storedKeys.add(self.keyCodec.decode(object[0]));
         }
         if (output.length !== 2) throw new Error('each iterable value must be an array of length 2, key value pair')
         if (!Buffer.isBuffer(output[0])) throw new Error('key must be a Buffer')
         if (!Buffer.isBuffer(output[1])) throw new Error('value must be a Buffer')
         if (output[0].length > self.limit) throw new DatasetArchiveLimitError(self.limit, output[0].length)
         if (output[1].length > self.limit) throw new DatasetArchiveLimitError(self.limit, output[1].length)
-        yield * output
+        yield * output;
       }
     }
 
-    await promises.pipeline(gen(this), lps__namespace.encode(), zlib.createBrotliCompress(this.brotli), this.io.write.bind(this.io))
+    await promises.pipeline(gen(this), lps__namespace.encode(), zlib.createBrotliCompress(this.brotli), this.io.write.bind(this.io));
     return storedKeys
   }
 
@@ -211,16 +211,16 @@ class DatasetArchive {
    * @param {boolean} [includeValue = 'auto'] - should value be decoded and provided to filter function? auto detects based on arguments list in function definition
    */
   async filter (filter, includeValue = 'auto') {
-    const includeVal = includeValue === 'auto' ? filter.length === 2 : !!includeValue
+    const includeVal = includeValue === 'auto' ? filter.length === 2 : !!includeValue;
     async function * iter (archive) {
       for await (const [keyBuffer, valueBuffer] of archive.read({ decode: false })) {
-        const key = archive.keyCodec.decode(keyBuffer)
+        const key = archive.keyCodec.decode(keyBuffer);
         if (await (includeVal ? filter(key, archive.valueCodec.decode(valueBuffer)) : filter(key))) {
-          yield [keyBuffer, valueBuffer]
+          yield [keyBuffer, valueBuffer];
         }
       }
     }
-    await this.write(iter(this), { encode: false })
+    await this.write(iter(this), { encode: false });
   }
 
   /**
@@ -230,14 +230,14 @@ class DatasetArchive {
    * @yields {[string, any]} values for which selectFn is truthy
    */
   async * select (selectFn, includeValue = 'auto') {
-    const includeVal = includeValue === 'auto' ? selectFn.length === 2 : !!includeValue
+    const includeVal = includeValue === 'auto' ? selectFn.length === 2 : !!includeValue;
     for await (const [keyBuffer, valueBuffer] of this.read({ decode: false })) {
-      const key = this.keyCodec.decode(keyBuffer)
+      const key = this.keyCodec.decode(keyBuffer);
       if (includeVal) {
-        const value = this.valueCodec.decode(valueBuffer)
-        if (await selectFn(key, value)) yield [key, value]
+        const value = this.valueCodec.decode(valueBuffer);
+        if (await selectFn(key, value)) yield [key, value];
       } else {
-        if (await selectFn(key)) yield [key, this.valueCodec.decode(valueBuffer)]
+        if (await selectFn(key)) yield [key, this.valueCodec.decode(valueBuffer)];
       }
     }
   }
@@ -247,7 +247,7 @@ class DatasetArchive {
    * @param  {...string} keys - list of keys
    */
   async delete (...keys) {
-    await this.filter(key => !keys.includes(key), false)
+    await this.filter(key => !keys.includes(key), false);
   }
 
   /**
@@ -255,7 +255,7 @@ class DatasetArchive {
    * @param  {...string} keys - list of keys
    */
   async retain (...keys) {
-    await this.filter(key => keys.includes(key), false)
+    await this.filter(key => keys.includes(key), false);
   }
 
   /**
@@ -265,22 +265,22 @@ class DatasetArchive {
    * @returns {Set.<string>} set of retained string keys - every key that is still in the archive
    */
   async merge (iter) {
-    const set = new Set()
+    const set = new Set();
     async function * gen (archive, iter) {
       for await (const [key, value] of iter) {
         if (!set.has(key)) {
-          set.add(key)
+          set.add(key);
           if (value !== undefined) {
-            yield [archive.keyCodec.encode(key), archive.valueCodec.encode(value)]
+            yield [archive.keyCodec.encode(key), archive.valueCodec.encode(value)];
           }
         }
       }
 
       for await (const [keyBuffer, valueBuffer] of archive.read({ decode: false })) {
-        const key = archive.keyCodec.decode(keyBuffer)
+        const key = archive.keyCodec.decode(keyBuffer);
         if (!set.has(key)) {
-          set.add(key)
-          yield [keyBuffer, valueBuffer]
+          set.add(key);
+          yield [keyBuffer, valueBuffer];
         }
       }
     }
@@ -294,7 +294,7 @@ class DatasetArchive {
    * @param {*} value
    */
   async set (key, value) {
-    await this.merge([[key, value]])
+    await this.merge([[key, value]]);
   }
 
   /**
@@ -302,7 +302,7 @@ class DatasetArchive {
    * @param {string} searchKey
    */
   async get (searchKey) {
-    const searchBuffer = this.keyCodec.encode(searchKey)
+    const searchBuffer = this.keyCodec.encode(searchKey);
     for await (const [keyBuffer, valueBuffer] of this.read({ decode: false })) {
       if (searchBuffer.equals(keyBuffer)) {
         return this.valueCodec.decode(valueBuffer)
@@ -315,22 +315,22 @@ class DatasetArchive {
    * or the Readable.from constructor
    */
   async * [Symbol.asyncIterator] () {
-    yield * this.read({ decode: true })
+    yield * this.read({ decode: true });
   }
 }
 
 function createFSIO (path) {
-  const chunkSize = 64 * 1024
+  const chunkSize = 64 * 1024;
 
   return {
     async * read () {
-      let handle
+      let handle;
       try {
-        handle = await fs.promises.open(path, 'r')
+        handle = await fs.promises.open(path, 'r');
       } catch (err) {
         if (err.code === 'ENOENT') {
           try {
-            handle = await fs.promises.open(`${path}.backup`, 'r')
+            handle = await fs.promises.open(`${path}.backup`, 'r');
           } catch (err2) {
             if (err.code === 'ENOENT') {
               return
@@ -343,36 +343,36 @@ function createFSIO (path) {
         }
       }
 
-      let position = 0
+      let position = 0;
       while (true) {
-        const { buffer, bytesRead } = await handle.read(Buffer.alloc(chunkSize), 0, chunkSize, position)
-        position += bytesRead
+        const { buffer, bytesRead } = await handle.read(Buffer.alloc(chunkSize), 0, chunkSize, position);
+        position += bytesRead;
         if (bytesRead > 0) {
-          yield buffer.slice(0, bytesRead)
+          yield buffer.slice(0, bytesRead);
         }
         // we have reached the end of the file, close and bail
         if (bytesRead < chunkSize) {
-          await handle.close()
+          await handle.close();
           return
         }
       }
     },
 
     async write (bufferIterator) {
-      const tmpPath = `${path}.temporary-${Date.now().toString(36)}-${Math.round(Math.random() * 0xFFFFFFFF).toString(36)}`
-      const bakPath = `${path}.backup`
-      const handle = await fs.promises.open(tmpPath, 'wx')
+      const tmpPath = `${path}.temporary-${Date.now().toString(36)}-${Math.round(Math.random() * 0xFFFFFFFF).toString(36)}`;
+      const bakPath = `${path}.backup`;
+      const handle = await fs.promises.open(tmpPath, 'wx');
       try {
         for await (const chunk of bufferIterator) {
-          await handle.write(chunk)
+          await handle.write(chunk);
         }
-        await handle.close()
-        await fs.promises.rm(bakPath).catch(x => {})
-        await fs.promises.rename(path, bakPath).catch(x => {})
-        await fs.promises.rename(tmpPath, path).catch(x => {})
-        await fs.promises.rm(bakPath).catch(x => {})
+        await handle.close();
+        await fs.promises.rm(bakPath).catch(x => {});
+        await fs.promises.rename(path, bakPath).catch(x => {});
+        await fs.promises.rename(tmpPath, path).catch(x => {});
+        await fs.promises.rm(bakPath).catch(x => {});
       } catch (err) {
-        await fs.promises.rm(tmpPath).catch(x => {})
+        await fs.promises.rm(tmpPath).catch(x => {});
         throw err
       }
     }
@@ -401,16 +401,16 @@ function decode (buffer) {
   return v8.deserialize(buffer)
 }
 
-const type = 'v8-structured-clone'
-const buffer = true
+const type = 'v8-structured-clone';
+const buffer = true;
 
-const v8Codec = /* #__PURE__ */Object.freeze({
+var v8Codec = /*#__PURE__*/Object.freeze({
   __proto__: null,
   encode: encode,
   decode: decode,
   type: type,
   buffer: buffer
-})
+});
 
 /**
  *
@@ -422,8 +422,8 @@ function fsOpen (path, options = {}) {
   return new DatasetArchive({ io: createFSIO(path), ...options })
 }
 
-exports.DatasetArchive = DatasetArchive
-exports.DatasetArchiveLimitError = DatasetArchiveLimitError
-exports.fsOpen = fsOpen
-exports.jsonCodec = jsonCodec
-exports.v8Codec = v8Codec
+exports.DatasetArchive = DatasetArchive;
+exports.DatasetArchiveLimitError = DatasetArchiveLimitError;
+exports.fsOpen = fsOpen;
+exports.jsonCodec = jsonCodec;
+exports.v8Codec = v8Codec;
