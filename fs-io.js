@@ -50,7 +50,7 @@ export default function createFSIO (path) {
         await handle.close()
         await fs.unlink(bakPath).catch(x => {})
         await fs.rename(path, bakPath).catch(x => {})
-        await fs.rename(tmpPath, path).catch(x => {})
+        await fs.rename(tmpPath, path)
         await fs.unlink(bakPath).catch(x => {})
       } catch (err) {
         await fs.unlink(tmpPath).catch(x => {})

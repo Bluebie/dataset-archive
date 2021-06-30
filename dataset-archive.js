@@ -12,16 +12,9 @@
 import { createBrotliCompress, createBrotliDecompress, constants as zlibConsts } from 'zlib'
 import * as jsonCodec from './json-codec.js'
 import * as stringCodec from './string-codec.js'
-import * as lps from 'length-prefixed-stream'
-import streams from 'readable-stream'
-const pipeline = (...args) => {
-  return new Promise((resolve, reject) => {
-    streams.pipeline(...args, (err, res) => {
-      if (err) reject(err)
-      else resolve(res)
-    })
-  })
-}
+import { encode as lengthEncoder, decode as lengthDecoder } from 'it-length-prefixed'
+import { pipeline } from 'streaming-iterables'
+import { transform } from 'stream-to-it'
 
 export class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -62,16 +55,16 @@ export class DatasetArchive {
    * @yields {[id, data]}
    */
   async * read ({ decode = true } = {}) {
-    const thru = new streams.PassThrough({ objectMode: true })
-    const pipeDone = pipeline(
-      streams.Readable.from(this.io.read(), { objectMode: false }),
-      createBrotliDecompress(this.brotli),
-      lps.decode({ limit: this.limit }),
-      thru
+    const chunks = pipeline(
+      () => this.io.read(),
+      transform(createBrotliDecompress(this.brotli)),
+      lengthDecoder({ maxDataLength: this.limit })
     )
+
     let index = 0
     let key
-    for await (const buffer of thru) {
+    for await (const lpsBuffer of chunks) {
+      const buffer = lpsBuffer.slice()
       if (index % 2 === 0) {
         // key
         key = decode ? this.keyCodec.decode(buffer) : buffer
@@ -81,14 +74,13 @@ export class DatasetArchive {
       }
       index += 1
     }
-    await pipeDone
   }
 
   /**
    * Given an async iterable, rebuilds the dataset archive with new contents, completely replacing it
+   * @param {AsyncIterable|Iterable} iterable
    * @param {object} [options]
    * @param {boolean} [options.encode] - should the iterable's stuff be encoded?
-   * @param {AsyncIterable|Iterable} iterable
    * @returns {Set.<string>} keys in archive
    * @async
    */
@@ -121,16 +113,30 @@ export class DatasetArchive {
       }
     }
 
-    const thru = new streams.PassThrough({ objectMode: false })
-    await Promise.all([
+    await new Promise((resolve, reject) => {
       pipeline(
-        streams.Readable.from(gen(this), { objectMode: true }),
-        lps.encode(),
-        createBrotliCompress(this.brotli),
-        thru
-      ),
-      this.io.write(thru)
-    ])
+        () => gen(this),
+
+        // catch errors
+        async function * (input) {
+          try {
+            for await (const val of input) yield val
+          } catch (err) {
+            reject(err)
+            throw err
+          }
+        },
+
+        lengthEncoder({}),
+
+        // make sure real node buffers are coming out of this
+        async function * (input) { for await (const val of input) yield val.slice() },
+
+        transform(createBrotliCompress(this.brotli)),
+
+        buffers => this.io.write(buffers)
+      ).then(resolve).catch(reject)
+    })
     return storedKeys
   }
 

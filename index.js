@@ -1,8 +1,7 @@
 import { DatasetArchive, DatasetArchiveLimitError } from './dataset-archive.js'
 import fsIO from './fs-io.js'
 
-export { DatasetArchive }
-export { DatasetArchiveLimitError }
+export { DatasetArchive, DatasetArchiveLimitError }
 export * as jsonCodec from './json-codec.js'
 export * as v8Codec from './v8-codec.js'
 

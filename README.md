@@ -29,5 +29,43 @@ Compactness, mostly. Most other formats prioritise random access, which severely
 
 Many people solve problems by throwing money at it, but I'm dirt poor and I don't want to spend more than five bucks a month on a server, so here we are, doing the old fashioned work of making software that runs well in resource constrained environments, and **never monetising anything** because it never becomes necessary to deal with the devil if you do things right.
 
+## Basic Usage
+
+```js
+import { fsOpen as openDatasetArchive } from 'dataset-archive'
+// or: const { fsOpen: openDatasetArchive } = require('dataset-archive/index.cjs')
+
+const dataset = openDatasetArchive('/path/to/file.dataset-archive.br')
+// overwrite/create dataset with specified content
+await dataset.write([
+  ['key1', 'value1'],
+  ['key2', 'value2'],
+  ['key3', { simple: { value: 3 }}]
+])
+// overwrite key 1, add key4, and keep key2, and delete key3
+await dataset.merge([
+  ['key1', 'value1 is updated'],
+  ['key3', undefined],
+  ['key4', 'has a value also']
+])
+
+// log out the current data in the dataset archive
+for await (const [key, value] of dataset) {
+  console.log(key, '=>', value)
+}
+```
+
+## Interface
+
+### constructor options
+
+- `io` (required) an object with `async write(async iterable of buffers)` and `async * read()` functions, providing low level file access
+- `limit` (optional) if set, this number sets the maximum number of bytes that an encoded key or value can take up
+- `codec` (optional) an object with  `encode(value)` and `decode(buffer)` functions, for serializing values
+
+Two default io implementations are included, `dataset-archive/fs-io.js` (or `.cjs`) implements NodeJS filesystem access using the `fs` module. `dataset-archive/test-utilities/memory.io.js` provides an in-memory storage fixture, mainly for testing the library without making a mess in the filesystem.
+
+
+
 —
 Phoenix

@@ -3,33 +3,9 @@
 Object.defineProperty(exports, '__esModule', { value: true });
 
 var zlib = require('zlib');
-var lps = require('length-prefixed-stream');
-var streams = require('readable-stream');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-function _interopNamespace(e) {
-  if (e && e.__esModule) return e;
-  var n = Object.create(null);
-  if (e) {
-    Object.keys(e).forEach(function (k) {
-      if (k !== 'default') {
-        var d = Object.getOwnPropertyDescriptor(e, k);
-        Object.defineProperty(n, k, d.get ? d : {
-          enumerable: true,
-          get: function () {
-            return e[k];
-          }
-        });
-      }
-    });
-  }
-  n['default'] = e;
-  return Object.freeze(n);
-}
-
-var lps__namespace = /*#__PURE__*/_interopNamespace(lps);
-var streams__default = /*#__PURE__*/_interopDefaultLegacy(streams);
+var itLengthPrefixed = require('it-length-prefixed');
+var streamingIterables = require('streaming-iterables');
+var streamToIt = require('stream-to-it');
 
 /**
  * LevelDB compatible codec, implementing standard JSON, the default codec
@@ -107,14 +83,6 @@ var stringCodec = /*#__PURE__*/Object.freeze({
  * the markup is identical between values. In the case of Auslan Signbank, roughly 105mb of scrape data
  * compressed down to 1.3mb packed in to this format.
  */
-const pipeline = (...args) => {
-  return new Promise((resolve, reject) => {
-    streams__default['default'].pipeline(...args, (err, res) => {
-      if (err) reject(err);
-      else resolve(res);
-    });
-  })
-};
 
 class DatasetArchiveLimitError extends Error {
   constructor (limit, size) {
@@ -155,16 +123,16 @@ class DatasetArchive {
    * @yields {[id, data]}
    */
   async * read ({ decode = true } = {}) {
-    const thru = new streams__default['default'].PassThrough({ objectMode: true });
-    const pipeDone = pipeline(
-      streams__default['default'].Readable.from(this.io.read(), { objectMode: false }),
-      zlib.createBrotliDecompress(this.brotli),
-      lps__namespace.decode({ limit: this.limit }),
-      thru
+    const chunks = streamingIterables.pipeline(
+      () => this.io.read(),
+      streamToIt.transform(zlib.createBrotliDecompress(this.brotli)),
+      itLengthPrefixed.decode({ maxDataLength: this.limit })
     );
+
     let index = 0;
     let key;
-    for await (const buffer of thru) {
+    for await (const lpsBuffer of chunks) {
+      const buffer = lpsBuffer.slice();
       if (index % 2 === 0) {
         // key
         key = decode ? this.keyCodec.decode(buffer) : buffer;
@@ -174,14 +142,13 @@ class DatasetArchive {
       }
       index += 1;
     }
-    await pipeDone;
   }
 
   /**
    * Given an async iterable, rebuilds the dataset archive with new contents, completely replacing it
+   * @param {AsyncIterable|Iterable} iterable
    * @param {object} [options]
    * @param {boolean} [options.encode] - should the iterable's stuff be encoded?
-   * @param {AsyncIterable|Iterable} iterable
    * @returns {Set.<string>} keys in archive
    * @async
    */
@@ -214,16 +181,30 @@ class DatasetArchive {
       }
     }
 
-    const thru = new streams__default['default'].PassThrough({ objectMode: false });
-    await Promise.all([
-      pipeline(
-        streams__default['default'].Readable.from(gen(this), { objectMode: true }),
-        lps__namespace.encode(),
-        zlib.createBrotliCompress(this.brotli),
-        thru
-      ),
-      this.io.write(thru)
-    ]);
+    await new Promise((resolve, reject) => {
+      streamingIterables.pipeline(
+        () => gen(this),
+
+        // catch errors
+        async function * (input) {
+          try {
+            for await (const val of input) yield val;
+          } catch (err) {
+            reject(err);
+            throw err
+          }
+        },
+
+        itLengthPrefixed.encode({}),
+
+        // make sure real node buffers are coming out of this
+        async function * (input) { for await (const val of input) yield val.slice(); },
+
+        streamToIt.transform(zlib.createBrotliCompress(this.brotli)),
+
+        buffers => this.io.write(buffers)
+      ).then(resolve).catch(reject);
+    });
     return storedKeys
   }
 

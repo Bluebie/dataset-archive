@@ -52,7 +52,7 @@ function createFSIO (path) {
         await handle.close();
         await fs.promises.unlink(bakPath).catch(x => {});
         await fs.promises.rename(path, bakPath).catch(x => {});
-        await fs.promises.rename(tmpPath, path).catch(x => {});
+        await fs.promises.rename(tmpPath, path);
         await fs.promises.unlink(bakPath).catch(x => {});
       } catch (err) {
         await fs.promises.unlink(tmpPath).catch(x => {});
