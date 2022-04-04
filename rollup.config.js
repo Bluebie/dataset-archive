@@ -6,7 +6,7 @@ export default [
       format: 'cjs',
       exports: 'auto'
     },
-    external: ['readable-stream', 'zlib', 'length-prefixed-stream', 'v8', 'fs']
+    external: ['readable-stream', 'zlib', 'length-prefixed-stream', 'it-length-prefixed', 'streaming-iterables', 'stream-to-it', 'v8', 'fs']
   },
   {
     input: 'dataset-archive.js',
@@ -15,7 +15,7 @@ export default [
       format: 'cjs',
       exports: 'auto'
     },
-    external: ['readable-stream', 'zlib', 'length-prefixed-stream']
+    external: ['readable-stream', 'zlib', 'length-prefixed-stream', 'it-length-prefixed', 'streaming-iterables', 'stream-to-it']
   },
   {
     input: 'json-codec.js',
